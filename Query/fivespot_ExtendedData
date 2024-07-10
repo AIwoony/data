@@ -1,0 +1,28 @@
+SELECT
+  date_format(
+  (case when o.order_id IN('71339','71345','71348','71350','71351','71357','71362') then '2024-03-31' ELSE o.regdate end), "%Y-%m-%d") as pay_date,
+  o.order_id,
+  oi.order_name, 
+  oi.order_note,
+  sum(case when p.status = 'buy' then p.total else 0 END) payment_total, 
+  sum(case when p.status = 'refund' then p.refund_price else 0 end) as refund_total,
+	DATE_FORMAT(CONVERT_TZ((case 
+	when p.status = 'refund' then p.regdate END), '+00:00', '+09:00'),"%Y-%m-%d") 'refund_date'	
+ 
+from payment p
+left join `order` o 
+  on p.order_id = o.order_id 
+left join order_item oi
+  on o.order_id = oi.order_id
+left JOIN user u
+  on o.uid = u.uid
+LEFT JOIN contract c
+ ON o.contract_id = c.contract_id
+where p.product_id is null
+	and c.`status` not IN ('wait')
+	and o.status IN ('purchased' , ' refund')
+    AND u.user_name NOT LIKE '%테스트%'
+    AND u.user_name NOT LIKE '%test%'
+    AND u.user_login NOT LIKE '%fastfive%'
+    and oi.order_name like '%연장%'
+GROUP BY p.payment_id
