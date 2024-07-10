@@ -1,0 +1,46 @@
+SELECT 
+c.uid,
+u.phone,	
+u.user_name,
+u.user_login, 
+DATE_FORMAT(convert_tz(u.regdate, '+00:00', '+09:00'),"%Y-%m-%d") as user_regdate,	
+c.contract_id,	
+c.status,
+DATE_FORMAT(convert_tz(o.regdate, '+00:00', '+09:00'),"%Y-%m-%d") as order_regdate,	
+contract_type,
+r.rateplan_id,
+r.name,	
+o.merchant_uid,
+sum(case when p.status = 'buy' and oi.order_category ='normal' then o.total else 0 END)+sum(case when p.status = 'refund' and oi.order_category ='normal' then p.refund_price else 0 end) total,
+
+DATE_FORMAT(CONVERT_TZ((case 
+when c.terminate_date IS NOT NULL then c.terminate_date 
+when c.cancel_date IS NOT NULL then c.cancel_date
+ELSE c.end_date END), '+00:00', '+09:00'),"%Y-%m-%d") 'end_date(fin)',
+
+sum(case when p.status = 'refund' and oi.order_category ='normal' then p.refund_price else 0 end) refund_total,
+
+DATE_FORMAT(CONVERT_TZ(max(p.regdate),'+00:00', '+09:00'),"%Y-%m-%d") 'refund_date'
+  
+FROM fivespot.order o
+LEFT outer JOIN fivespot.contract c
+ON c.contract_id = o.contract_id
+LEFT outer JOIN fivespot.user u
+ON u.uid = c.uid 
+LEFT outer JOIN rateplan r
+ON r.rateplan_id = c.rateplan_id
+LEFT join order_item oi
+on o.order_id = oi.order_id
+LEFT JOIN  payment p 
+ON o.order_id = p.order_id
+
+WHERE
+c.`status` not IN ('wait')
+and o.status IN ('purchased' , ' refund')
+AND c.rateplan_id != 9
+AND (oi.order_note IS NULL OR oi.order_note NOT LIKE '%연장%')
+AND user_login NOT LIKE "%fastfive.co.kr%"
+AND user_login NOT LIKE "%test%"
+AND user_name NOT LIKE "%테스트%" 
+AND contract_type NOT LIKE "service"
+GROUP BY o.order_id
